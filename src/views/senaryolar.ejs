@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/public/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      .scenario-container {
+        padding: 20px;
+        color: #fff;
+      }
+      .control-panel {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .control-panel select {
+        background: #2c3e50;
+        color: #fff;
+        border: 1px solid #4a5568;
+        padding: 8px;
+        border-radius: 4px;
+        min-width: 200px;
+      }
+      .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+      .chart-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 20px;
+        height: 350px;
+        width: 100%;
+      }
+      @media (max-width: 1000px) {
+        .charts-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .chart-card h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-weight: 500;
+        font-size: 1.1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">kds</div>
+        <nav class="menu">
+          <a href="/" class="menu-item">Dashboardlar</a>
+          <a href="/senaryolar" class="menu-item active">Senaryolar</a>
+          
+        </nav>
+      </aside>
+      <main class="content">
+        <div class="scenario-container">
+          <div class="header">
+            <h1>Yatırım Senaryoları</h1>
+          </div>
+        
+          <div class="control-panel">
+            <label for="tesis-select">Tesis Seçiniz:</label>
+            <select id="tesis-select">
+              <option value="">Lütfen bir tesis seçin...</option>
+            </select>
+          </div>
+        
+          <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="chart-box">
+              <div class="chart-head">Verimlilik Değişimi (Baz vs Senaryo)</div>
+              <div style="position: relative; height: 100%; width: 100%;">
+                <canvas id="efficiencyChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-box">
+              <div class="chart-head">Finansal Etki ve ROI Analizi</div>
+              <div style="position: relative; height: 100%; width: 100%;">
+                <canvas id="roiChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-box">
+              <div class="chart-head">Karbon Azalımı (Baz vs Senaryo)</div>
+              <div style="position: relative; height: 100%; width: 100%;">
+                <canvas id="carbonChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-box">
+              <div class="chart-head">Senaryo Karar Matrisi</div>
+              <div style="position: relative; height: 100%; width: 100%;">
+                <canvas id="decisionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const tesisSelect = document.getElementById('tesis-select');
+      let chartInstance = null;
+      let carbonChartInstance = null;
+      let roiChartInstance = null;
+      let decisionChartInstance = null;
+    
+      // ortak ayarlar
+      const fontSize = 12;
+      const baseOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, labels: { color: '#fff', font: { size: fontSize, weight: '600' } } },
+          tooltip: { titleColor: '#fff', bodyColor: '#fff' },
+        },
+        scales: {
+          x: { ticks: { color: '#fff', font: { size: fontSize, weight: '400' } }, grid: { color: 'rgba(255,255,255,0.08)' } },
+          y: { ticks: { color: '#fff', font: { size: fontSize, weight: '400' } }, grid: { color: 'rgba(255,255,255,0.08)' } },
+        }
+      };
+    
+      async function loadTesisler() {
+        try {
+          const res = await fetch('/api/senaryo/tesisler');
+          const data = await res.json();
+          data.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.tesis_id;
+            opt.textContent = t.tesis_adi;
+            tesisSelect.appendChild(opt);
+          });
+          if (data.length > 0) {
+            tesisSelect.value = data[0].tesis_id;
+            loadAnaliz(data[0].tesis_id);
+          }
+        } catch (e) {
+          console.error('Tesisler yüklenemedi', e);
+        }
+      }
+    
+      async function loadAnaliz(tesisId) {
+        if (!tesisId) {
+          if (chartInstance) chartInstance.destroy();
+          if (carbonChartInstance) carbonChartInstance.destroy();
+          if (roiChartInstance) roiChartInstance.destroy();
+          if (decisionChartInstance) decisionChartInstance.destroy();
+          return;
+        }
+        
+        try {
+          const res = await fetch(`/api/senaryo/analiz?tesis_id=${tesisId}`);
+          if (!res.ok) throw new Error('Veri alınamadı');
+          const data = await res.json();
+          renderChart(data);
+          renderRoiChart(data);
+          renderDecisionMatrix(data);
+          renderCarbonChart(data);
+        } catch (e) {
+          console.error(e);
+          alert('Veri yüklenirken bir hata oluştu.');
+        }
+      }
+    
+      function renderChart(data) {
+        const ctx = document.getElementById('efficiencyChart').getContext('2d');
+        
+        const labels = data.scenarios.map(s => s.senaryo_adi);
+        const baseValues = data.scenarios.map(s => s.baz_verimlilik);
+        const scenarioValues = data.scenarios.map(s => s.senaryo_verimlilik);
+        
+        if (chartInstance) chartInstance.destroy();
+    
+        const opts = JSON.parse(JSON.stringify(baseOpts));
+        opts.scales.y.title = { display: true, text: 'Verimlilik Skoru', color: '#fff' };
+        opts.scales.y.beginAtZero = true;
+    
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Mevcut Durum',
+                data: baseValues,
+                backgroundColor: '#ff6b6b',
+                borderColor: '#ff6b6b',
+                borderWidth: 1,
+                borderRadius: 4
+              },
+              {
+                label: 'Senaryo Sonrası',
+                data: scenarioValues,
+                backgroundColor: '#7ee787',
+                borderColor: '#7ee787',
+                borderWidth: 1,
+                borderRadius: 4
+              }
+            ]
+          },
+          options: opts
+        });
+      }
+
+      function renderCarbonChart(data) {
+        const ctx = document.getElementById('carbonChart').getContext('2d');
+        const labels = data.scenarios.map(s => s.senaryo_adi);
+        const baseCarbonArray = data.scenarios.map(() => data.base_carbon);
+        const scenarioCarbonArray = data.scenarios.map(s => s.senaryo_karbon);
+
+        if (carbonChartInstance) carbonChartInstance.destroy();
+
+        const opts = JSON.parse(JSON.stringify(baseOpts));
+        opts.scales.y.title = { display: true, text: 'Toplam Karbon Emisyonu (ton)', color: '#fff' };
+        opts.scales.y.beginAtZero = true;
+        opts.plugins.tooltip = {
+          callbacks: {
+            afterBody: (items) => {
+              if (!items || !items.length) return '';
+              const idx = items[0].dataIndex;
+              const s = data.scenarios[idx];
+              const azalım = Number(s.azalis_yuzde) || 0;
+              const azalan = Math.max(0, Number(s.baz_karbon) - Number(s.senaryo_karbon));
+              return [`Karbon Azalım Oranı: ${azalım.toFixed(2)}%`, `Azalan Karbon: ${azalan.toFixed(2)} ton`];
+            }
+          }
+        };
+
+        carbonChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Mevcut Karbon',
+                data: baseCarbonArray,
+                backgroundColor: '#58a6ff',
+                borderColor: '#58a6ff',
+                borderWidth: 1,
+                borderRadius: 4
+              },
+              {
+                label: 'Senaryo Karbon',
+                data: scenarioCarbonArray,
+                backgroundColor: '#2ea043',
+                borderColor: '#2ea043',
+                borderWidth: 1,
+                borderRadius: 4
+              }
+            ]
+          },
+          options: opts
+        });
+      }
+
+      function renderRoiChart(data) {
+        const ctx = document.getElementById('roiChart').getContext('2d');
+        const labels = data.scenarios.map(s => s.senaryo_adi);
+        const roiValues = data.scenarios.map(s => s.roi_percent);
+
+        if (roiChartInstance) roiChartInstance.destroy();
+
+        const opts = JSON.parse(JSON.stringify(baseOpts));
+        opts.scales.y.title = { display: true, text: 'ROI (%)', color: '#fff' };
+        opts.scales.y.beginAtZero = true;
+        opts.plugins.tooltip = {
+          callbacks: {
+            afterBody: (items) => {
+              if (!items || !items.length) return '';
+              const idx = items[0].dataIndex;
+              const s = data.scenarios[idx];
+              const degisim = Number(s.net_kar_degisim_tl) || 0;
+              const ek = Number(s.ek_maliyet_tl) || 0;
+              return [`Net Kar Değişimi: ${degisim.toLocaleString('tr-TR')} TL`, `Ek Yatırım: ${ek.toLocaleString('tr-TR')} TL`];
+            }
+          }
+        };
+
+        roiChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'ROI (%)',
+                data: roiValues,
+                backgroundColor: '#f2cc60',
+                borderColor: '#e3b341',
+                borderWidth: 1,
+                borderRadius: 4
+              }
+            ]
+          },
+          options: opts
+        });
+      }
+
+      function renderDecisionMatrix(data) {
+        const labels = data.scenarios.map(s => s.senaryo_adi);
+        const effChange = data.scenarios.map(s => Number(s.senaryo_verimlilik) - Number(s.baz_verimlilik));
+        const carbonDec = data.scenarios.map(s => Math.max(0, Number(s.baz_karbon) - Number(s.senaryo_karbon)));
+        const roiVals = data.scenarios.map(s => Number(s.roi_percent));
+        const minY = Math.min(0, ...roiVals);
+        const maxY = Math.max(0, ...roiVals);
+        const maxEff = Math.max(0, ...effChange);
+        const maxCarb = Math.max(0, ...carbonDec);
+        const combined = effChange.map((e, i) => {
+          const ne = maxEff > 0 ? e / maxEff : 0;
+          const nc = maxCarb > 0 ? carbonDec[i] / maxCarb : 0;
+          return 0.5 * ne + 0.5 * nc;
+        });
+        const avgCombined = combined.length ? combined.reduce((a,b)=>a+b,0) / combined.length : 0;
+
+        const typeColors = {
+          'Verimlilik': '#7ee787',
+          'Modernizasyon': '#58a6ff',
+          'Optimizasyon': '#f2cc60',
+          'Emisyon_Azaltim': '#d2a8ff'
+        };
+
+        const datasets = [];
+        const types = data.scenarios.map(s => s.yatirim_turu || 'Diğer');
+        const uniqueTypes = [...new Set(types)];
+        uniqueTypes.forEach(t => {
+          const color = typeColors[t] || '#ff7b72';
+          const points = data.scenarios
+            .map((s, i) => ({ t: s.yatirim_turu || 'Diğer', x: combined[i], y: roiVals[i], l: labels[i], eff: effChange[i], carb: carbonDec[i], bazCarb: Number(s.baz_karbon), senCarb: Number(s.senaryo_karbon), bazEff: Number(s.baz_verimlilik), senEff: Number(s.senaryo_verimlilik) }))
+            .filter(p => p.t === t)
+            .map(p => ({ x: p.x, y: p.y, label: p.l, eff: p.eff, carb: p.carb, baz: p.bazCarb, sen: p.senCarb, bazEff: p.bazEff, senEff: p.senEff }));
+          datasets.push({
+            label: t,
+            data: points,
+            backgroundColor: color,
+            borderColor: color,
+            pointRadius: 4
+          });
+        });
+
+        const ctx = document.getElementById('decisionChart').getContext('2d');
+        if (decisionChartInstance) decisionChartInstance.destroy();
+
+        const opts = JSON.parse(JSON.stringify(baseOpts));
+        const xMargin = 0.03;
+        opts.scales.x = { min: -xMargin, max: 1 + xMargin, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.08)' }, title: { display: true, text: 'Birleşik Teknik–Çevresel Skor (0–1)', color: '#fff' } };
+        const yRange = Math.max(1, Math.abs(maxY - minY));
+        const yMargin = yRange * 0.06;
+        opts.scales.y = { min: minY - yMargin, max: maxY + yMargin, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.08)' }, title: { display: true, text: 'ROI (%)', color: '#fff' } };
+        opts.plugins.tooltip = {
+          callbacks: {
+            label: (ctx) => {
+              const d = ctx.raw;
+              const pctEff = d && d.bazEff > 0 ? ((d.senEff - d.bazEff) / d.bazEff) * 100 : (Number(d.eff) * 100);
+              const carbPct = d && d.baz && d.sen && d.baz > 0 ? ((d.baz - d.sen) / d.baz) * 100 : 0;
+              const lines = [];
+              lines.push(`Senaryo: ${d.label}`);
+              lines.push(`Verimlilik değişimi: ${pctEff.toFixed(2)} %`);
+              lines.push(`Karbon azalımı: ${Number(d.carb).toFixed(2)} ton (${carbPct.toFixed(2)}%)`);
+              lines.push(`ROI: ${Number(ctx.parsed.y).toFixed(2)} %`);
+              return lines;
+            }
+          }
+        };
+
+        datasets.push({
+          type: 'line',
+          label: 'ROI = 0',
+          data: [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+          borderColor: 'rgba(255,255,255,0.4)',
+          borderWidth: 1,
+          pointRadius: 0
+        });
+        datasets.push({
+          type: 'line',
+          label: 'Skor Ortalaması',
+          data: [{ x: avgCombined, y: minY }, { x: avgCombined, y: maxY }],
+          borderColor: 'rgba(255,255,255,0.3)',
+          borderWidth: 1,
+          pointRadius: 0
+        });
+
+        decisionChartInstance = new Chart(ctx, {
+          type: 'scatter',
+          data: { datasets },
+          options: opts
+        });
+      }
+    
+      tesisSelect.addEventListener('change', (e) => {
+        loadAnaliz(e.target.value);
+      });
+    
+      loadTesisler();
+    </script>
+  </body>
+</html>

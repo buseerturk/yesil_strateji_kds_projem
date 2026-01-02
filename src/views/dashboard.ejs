@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/public/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">Zorlu KDS</div>
+        <nav class="menu">
+          <a href="/" class="menu-item active">Dashboardlar</a>
+          <a href="/senaryolar" class="menu-item">Senaryolar</a>
+          
+        </nav>
+      </aside>
+      <main class="content">
+        <div class="kpi-row">
+          <div class="kpi-card" id="kpi-uretim">
+            <div class="label">Toplam Üretim</div>
+            <div class="value" data-unit="MWh">—</div>
+          </div>
+          <div class="kpi-card" id="kpi-gelir">
+            <div class="label">Toplam Gelir</div>
+            <div class="value" data-unit="TL">—</div>
+          </div>
+          <div class="kpi-card" id="kpi-gider">
+            <div class="label">Toplam Gider</div>
+            <div class="value" data-unit="TL">—</div>
+          </div>
+          <div class="kpi-card" id="kpi-kar">
+            <div class="label">Toplam Kar</div>
+            <div class="value" data-unit="TL">—</div>
+          </div>
+          <div class="kpi-card clickable" id="kpi-risk">
+            <div class="label">Riskli Tesis</div>
+            <div class="value" data-unit="adet">—</div>
+          </div>
+          <div class="kpi-card" id="kpi-marj">
+            <div class="label">Kar Marjı</div>
+            <div class="value" data-unit="%">—</div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-box">
+            <div class="chart-head">
+              <span>⚡ Toplam Üretim (Aylık)</span>
+              <select id="chart1-year"></select>
+            </div>
+            <canvas id="chart1"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-head">
+              <span>🏭 Tesis Verimliliği Karşılaştırması</span>
+              <select id="chart2-year"></select>
+            </div>
+            <canvas id="chart2"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-head">
+              <span>🔵 Tesis Verimliliği Analizi </span>
+              <select id="chart3-year"></select>
+            </div>
+            <canvas id="chart3"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-head">
+              <span>💰 Maliyet – Gelir – Kar</span>
+              <select id="chart4-year"></select>
+            </div>
+            <canvas id="chart4"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-head">
+              <span>🌍 Karbon Yoğunluğu (Çevresel Risk)</span>
+              <select id="chart5-year"></select>
+            </div>
+            <canvas id="chart5"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-head">
+              <span>📊 Performans Matrisi (ÖZET)</span>
+              <select id="chart6-year"></select>
+            </div>
+            <canvas id="chart6"></canvas>
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+              <button id="chart6-detail" aria-label="Detay" style="padding:6px 10px; border-radius:8px; background:#1f6feb; color:#fff; border:none; cursor:pointer;">Detay</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="risk-modal" class="modal hidden" aria-hidden="true">
+          <div class="modal-content" role="dialog" aria-modal="true" aria-label="Riskli Tesisler">
+            <div class="modal-header">
+              <h3>Riskli Tesisler</h3>
+              <button id="modal-close" aria-label="Kapat">×</button>
+            </div>
+            <div class="modal-body">
+              <div id="risk-summary" style="margin-bottom:10px"></div>
+              <table class="risk-table">
+                <thead>
+                  <tr>
+                    <th>Tesis</th>
+                    <th>Enerji Türü</th>
+                    <th>Karbon Yoğunluğu (t/MWh)</th>
+                    <th>Referans (t/MWh)</th>
+                  </tr>
+                </thead>
+                <tbody id="risk-rows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-content" id="perf-modal" role="dialog" aria-modal="true" aria-label="Performans Matrisi" style="display:none">
+            <div class="modal-header">
+              <h3>Performans Matrisi (Büyütülmüş)</h3>
+              <button id="perf-close" aria-label="Kapat">×</button>
+            </div>
+            <div class="modal-body">
+              <canvas id="perf-canvas" style="width:100%;height:500px"></canvas>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="/public/js/dashboard.js"></script>
+  </body>
+</html>

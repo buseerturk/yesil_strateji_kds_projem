@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/public/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">Zorlu KDS</div>
+        <nav class="menu">
+          <a href="/" class="menu-item <%= title.includes('Dashboard') ? 'active' : '' %>">Dashboardlar</a>
+          <a href="/senaryolar" class="menu-item <%= title.includes('Senaryo') ? 'active' : '' %>">Senaryolar</a>
+          <a href="#" class="menu-item">Tahminleme</a>
+        </nav>
+      </aside>
+      <main class="content">
+        <%- body %>
+      </main>
+    </div>
+
+    <script src="/public/js/dashboard.js"></script>
+  </body>
+</html>
+

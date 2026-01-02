@@ -1,0 +1,22 @@
+{
+  "name": "kds_projem",
+  "version": "1.0.0",
+  "description": "KDS Yeşil Strateji Karar Destek Sistemleri - Node.js Express MVC",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.2.1",
+    "morgan": "^1.10.1",
+    "mysql2": "^3.16.0"
+  }
+}
