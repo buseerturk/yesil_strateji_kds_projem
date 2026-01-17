@@ -86,7 +86,7 @@ Proje MySQL veritabanı kullanmaktadır.
 
 Aşağıda projede kullanılan veritabanı tasarımını gösteren ER diyagramı yer almaktadır:
 
-![ER Diyagramı](docs/er_diyagrami.png)
+![ER Diyagramı](docs/Veritabani_Genel_Gorunum.png)
 
 
 ##  Kurulum Adımları
