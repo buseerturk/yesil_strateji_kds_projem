@@ -69,6 +69,7 @@ Projede zorunlu iş kuralları uygulanmıştır:
 - `POST /api/senaryo`
 - `PUT /api/senaryo/:id`
 - `DELETE /api/senaryo/:id`
+- `GET /api/senaryo/`
 
 
 ## 🧩 Veritabanı (ER Diyagramı)
